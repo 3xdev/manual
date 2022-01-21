@@ -23,6 +23,7 @@
 
 
 # 模型
+
 ## 常量
 适用场景
 - 定义类型或状态的约定值，避免记忆错误和拼写错误。
@@ -109,6 +110,46 @@ public function setMobilesAttr($value, $data)
 反例：orders(订单)  comments(评论)
 
 
+## 复杂查询
+
+```php
+            //$query->where('user_id', 'in', function ($query) use ($value) {
+            //    $query->table((new User())->getTable())->where('nickname', 'like', "%{$value}%")->field('id');
+            //});
+            $uids = User::where('nickname', 'like', "%{$value}%")->column('id') ?: [0];
+            $tids = TeamMember::where('user_id', 'in', $uids)->column('team_id') ?: [0];
+            $query->where(function ($query) use ($uids, $tids) {
+                $query->whereOr([
+                    ['user_id', 'in',  $uids],
+                    ['id', 'in', $tids]
+                ]);
+            });
+
+                $plist = \think\facade\Db::view('UserPoint', 'id,user_id,point_time,point')
+                        ->view('TeamPoint', 'user_point_id', 'UserPoint.id=TeamPoint.user_point_id and TeamPoint.team_id='.$team->id, 'LEFT')
+                        ->where('UserPoint.user_id', 'in', $uids)
+                        ->where('UserPoint.point_time',  '>', $team->getData('start_time'))
+                        ->where('user_point_id', 'null')
+                        ->select();
+
+    public function searchConsigneeAttr($query, $value)
+    {
+        if ($value) {
+            $query->where('id', 'in', function ($query) use ($value) {
+                $query->table((new GiftOrder())->getTable())->where('consignee', 'like', "%{$value}%")->field('gift_log_id');
+            });
+        }
+    }
+    public function searchMobileAttr($query, $value)
+    {
+        if ($value) {
+            $query->where('id', 'in', function ($query) use ($value) {
+                $query->table((new GiftOrder())->getTable())->where('mobile', 'like', "%{$value}%")->field('gift_log_id');
+            });
+        }
+    }
+
+```
 
 
 # 参考
