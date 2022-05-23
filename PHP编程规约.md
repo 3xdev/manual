@@ -1,7 +1,7 @@
 # 编码规范
 
 - PSR-12：扩展编码风格
-  https://www.php-fig.org/psr/psr-12/
+https://www.php-fig.org/psr/psr-12/
 
 # 推荐IDE
 
