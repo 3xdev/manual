@@ -83,7 +83,7 @@ vi config-sample.yaml
 
 ### 中间件安装
 
-##### Mysql集群(RadonDB)
+##### Mysql集群(RadonDB v2.2.0)
 
 - 添加应用仓库
   名称：radondb-mysql-operator
@@ -95,17 +95,19 @@ vi config-sample.yaml
 
 ```bash
 # 获取配置
-wget https://github.com/radondb/radondb-mysql-kubernetes/releases/latest/download/mysql_v1alpha1_mysqlcluster.yaml
+wget https://github.com/radondb/radondb-mysql-kubernetes/releases/download/v2.2.0/mysql_v1alpha1_mysqlcluster_mysql8.yaml
 
 # 修改配置
-vi mysql_v1alpha1_mysqlcluster.yaml
+vim mysql_v1alpha1_mysqlcluster_mysql8.yaml
 # name: sample => name: mysql-cluster
 
 # 应用配置
-kubectl apply -f mysql_v1alpha1_mysqlcluster.yaml --namespace=middleware
+kubectl apply -f mysql_v1alpha1_mysqlcluster_mysql8.yaml --namespace=middleware
 ```
 
 - 添加test用户
+
+在项目 middleware 中，创建保密字典 mysql-cluster-password (类型默认，添加数据 键:pwdForTest 值:test用户密码)
 
 ```bash
 # 获取配置
@@ -115,9 +117,10 @@ wget https://raw.githubusercontent.com/radondb/radondb-mysql-kubernetes/main/con
 vi mysql_v1alpha1_mysqluser.yaml
 # name: sample-user-cr => name: mysql-cluster-user-cr
 # user: sample_user => user: test
+# privileges: SELECT => privileges: ALL
 # clusterName: sample => clusterName: mysql-cluster
 # nameSpace: default => nameSpace: middleware
-# secretName: sample-user-password => secretName: mysql-cluster-user
+# secretName: sample-user-password => secretName: mysql-cluster-password
 # secretKey: pwdForSample => secretKey: pwdForTest
 
 # 应用配置
@@ -137,27 +140,13 @@ kubectl exec -it mysql-cluster-mysql-0 -n middleware -- mysql -u test -p
 mysql -h mysql-cluster-leader.middleware -u luke -p
 ```
 
-##### Redis集群(Spotahome)
+##### Redis主副本集群(Bitnami v16.8.5)
 
 - 添加应用仓库
-  名称：spotahome-redis-operator
-  URL：https://spotahome.github.io/redis-operator/
+  名称：bitnami
+  URL：https://charts.bitnami.com/bitnami
 
-- 部署应用redis-operator
-
-- 部署Redis Cluster
-
-```bash
-# 获取配置
-wget https://raw.githubusercontent.com/spotahome/redis-operator/master/example/redisfailover/basic.yaml
-
-# 修改配置
-vi basic.yaml
-# name: redisfailover => name: redis-cluster
-
-# 应用配置
-kubectl create -f basic.yaml --namespace=middleware
-```
+- 部署应用redis-cluster
 
 ##### Elasticsearch集群(ECK)
 
@@ -227,3 +216,13 @@ EOF
 # 部署cluster
 kubectl create -f kibana.yaml
 ```
+
+
+### 常见问题
+
+##### 强制删除CRD
+
+```bash
+kubectl patch crd/CRD名 -p '{"metadata":{"finalizers":[]}}' --type=merge
+```
+
