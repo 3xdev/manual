@@ -96,6 +96,64 @@ public function setMobilesAttr($value, $data)
 ## 模型事件
 
 
+## 条件查询
+
+### whereOr 不同字段条件组合
+whereOr 只能用在闭包查询中，直接使用会影响其他条件限制
+正例：
+```php
+$map = [
+    ['nickname', 'like', '%哥'],
+    ['realname', 'like', '%姐'],
+];
+\app\model\User::where('status', 1)->where(function ($query) use($map) {
+    $query->whereOr($map);
+})->select();
+```
+```sql
+SELECT * FROM `gen_user` WHERE (  `status` = 1  AND (  `nickname` LIKE '%哥'  OR `realname` LIKE '%姐' ) ) AND `gen_user`.`delete_time` = '0'";
+```
+反例：
+```php
+\app\model\User::where('status', 1)->whereOr([['nickname', 'like', '%哥'], ['realname', 'like', '%姐']])->select();
+```
+```sql
+SELECT * FROM `gen_user` WHERE (  `status` = 1 OR `nickname` LIKE '%哥'  OR `realname` LIKE '%姐' ) AND `gen_user`.`delete_time` = '0';
+```
+
+### whereIn 子查询
+in 将外表和内表做哈希连接(hash join)，先查询内表得出结果集，再查询外表。适用于 大表in小表。
+```php
+$mapUser = [
+    ['gender', '=', 'f'],
+    ['realname', 'like', '%姐'],
+];
+$orders = \app\model\Order::whereIn('user_id', function (&$query) use($mapUser) {
+    $query = (new \app\model\User())->db();
+    $query->field('id')->where($mapUser);
+})->select();
+```
+```sql
+SELECT * FROM `gen_order` WHERE (  `user_id` IN (SELECT `id` FROM `gen_user` WHERE ( `sex` = 'f' AND `realname` LIKE '%姐' ) AND `gen_user`.`delete_time` = '0') ) AND `gen_order`.`delete_time` = '0';
+```
+
+
+### whereExists 子查询
+exists 先对外表做loop循环，然后每次再对内表进行查询。适用于 小表exists大表。
+```php
+$mapOrder = [
+    ['status', '=', 1],
+    ['amounts', 'between', [100, 200]],
+];
+$users = \app\model\User::where('status', 1)->whereExists(function (&$query) use($mapOrder) {
+    $query = (new \app\model\Order())->db();
+    $query->whereExp('buyer_user_id', '='.(new \app\model\User())->db()->getTable().'.id')->where($mapOrder);
+})->select();
+```
+```sql
+SELECT * FROM `gen_user` WHERE (  `status` = 1  AND EXISTS ( SELECT * FROM `gen_order` WHERE (  ( `buyer_user_id` = gen_user.id )  AND `status` = 1  AND `amounts` BETWEEN '0' AND '200'  ) AND `gen_order`.`delete_time` = '0' ) ) AND `gen_user`.`delete_time` = '0';
+```
+
 ## 模型关联
 关联名使用一个小写单词
 正例：ologs  tmembers  members
