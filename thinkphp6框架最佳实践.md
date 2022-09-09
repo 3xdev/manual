@@ -122,7 +122,7 @@ SELECT * FROM `gen_user` WHERE (  `status` = 1 OR `nickname` LIKE '%哥'  OR `re
 ```
 
 ### whereIn 子查询
-in 将外表和内表做哈希连接(hash join)，先查询子表，再查询主表，适用于 大表in小表。
+in 将外表和内表做哈希连接(hash join)，先查询内表得出结果集，再查询外表。适用于 大表in小表。
 ```php
 $mapUser = [
     ['gender', '=', 'f'],
@@ -139,7 +139,7 @@ SELECT * FROM `gen_order` WHERE (  `user_id` IN (SELECT `id` FROM `gen_user` WHE
 
 
 ### whereExists 子查询
-in 将外表和内表做哈希连接(hash join)，先查询子表，再查询主表，适用于 小表exists大表。
+exists 先对外表做loop循环，然后每次再对内表进行查询。适用于 小表exists大表。
 ```php
 $mapOrder = [
     ['status', '=', 1],
