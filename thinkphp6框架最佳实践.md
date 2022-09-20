@@ -24,6 +24,11 @@
 
 # 模型
 
+## 约定
+- 字段列表必须使用数组表示
+正例：['id']  ['id', 'title'] ['id' => 'uid', 'name' => 'uname']
+反例：'id'  'id,title'
+
 ## 常量
 适用场景
 - 定义类型或状态的约定值，避免记忆错误和拼写错误。
@@ -121,6 +126,16 @@ SELECT * FROM `gen_user` WHERE (  `status` = 1  AND (  `nickname` LIKE '%哥'  O
 SELECT * FROM `gen_user` WHERE (  `status` = 1 OR `nickname` LIKE '%哥'  OR `realname` LIKE '%姐' ) AND `gen_user`.`delete_time` = '0';
 ```
 
+### whereIn 数组查询
+先使用 column 获取符合条件的 id 数组，再使用 whereIn 条件。适用于 小量 查询。
+```php
+$uids = \app\model\User::where('nickname', 'like', "%妈%")->column('id') ?: [0];
+$orders = \app\model\Order::whereIn('user_id', $uids)->select();
+```
+```sql
+SELECT * FROM `gen_order` WHERE (  `id` IN (5,28,31,39) ) AND `gen_order`.`delete_time` = '0';
+```
+
 ### whereIn 子查询
 in 将外表和内表做哈希连接(hash join)，先查询内表得出结果集，再查询外表。适用于 大表in小表。
 ```php
@@ -137,7 +152,6 @@ $orders = \app\model\Order::whereIn('user_id', function (&$query) use($mapUser) 
 SELECT * FROM `gen_order` WHERE (  `user_id` IN (SELECT `id` FROM `gen_user` WHERE ( `sex` = 'f' AND `realname` LIKE '%姐' ) AND `gen_user`.`delete_time` = '0') ) AND `gen_order`.`delete_time` = '0';
 ```
 
-
 ### whereExists 子查询
 exists 先对外表做loop循环，然后每次再对内表进行查询。适用于 小表exists大表。
 ```php
@@ -147,11 +161,27 @@ $mapOrder = [
 ];
 $users = \app\model\User::where('status', 1)->whereExists(function (&$query) use($mapOrder) {
     $query = (new \app\model\Order())->db();
-    $query->whereExp('buyer_user_id', '='.(new \app\model\User())->db()->getTable().'.id')->where($mapOrder);
+    $query->whereExp('buyer_user_id', '=' . (new \app\model\User())->db()->getTable() . '.id')->where($mapOrder);
 })->select();
 ```
 ```sql
 SELECT * FROM `gen_user` WHERE (  `status` = 1  AND EXISTS ( SELECT * FROM `gen_order` WHERE (  ( `buyer_user_id` = gen_user.id )  AND `status` = 1  AND `amounts` BETWEEN '0' AND '200'  ) AND `gen_order`.`delete_time` = '0' ) ) AND `gen_user`.`delete_time` = '0';
+```
+
+### 视图 子查询
+子查询中用到两表或多表时，需要使用视图来作为子查询。
+```php
+$mapGoods = [
+    ['Goods.type', '=', 1],
+    ['Goods.title', 'like', '%面包%'],
+];
+$orders = \app\model\Order::where('status', 1)->whereExists(function ($query) use($mapGoods) {
+    $query->view('OrderGoods')->view('Goods', ['id' => 'gid'], 'Goods.id=OrderGoods.goods_id and Goods.delete_time=0');
+    $query->whereExp('OrderGoods.order_id', '=' . (new \app\model\Order())->db()->getTable() . '.id')->where($mapGoods);
+})->select();
+```
+```sql
+SELECT * FROM `gen_order` WHERE ( `status` = 1 AND EXISTS ( SELECT `OrderGoods`.*,Goods.id AS gid FROM `gen_order_goods` `OrderGoods` INNER JOIN `gen_goods` `Goods` ON `Goods`.`id`=OrderGoods.goods_id and Goods.delete_time=0 WHERE ( `OrderGoods`.`order_id` =gen_order.id ) AND `Goods`.`type` = '1' AND `Goods`.`title` LIKE '%面包%' ) ) AND `gen_order`.`delete_time` = '0';
 ```
 
 ## 模型关联
@@ -171,41 +201,12 @@ SELECT * FROM `gen_user` WHERE (  `status` = 1  AND EXISTS ( SELECT * FROM `gen_
 ## 复杂查询
 
 ```php
-            //$query->where('user_id', 'in', function ($query) use ($value) {
-            //    $query->table((new User())->getTable())->where('nickname', 'like', "%{$value}%")->field('id');
-            //});
-            $uids = User::where('nickname', 'like', "%{$value}%")->column('id') ?: [0];
-            $tids = TeamMember::where('user_id', 'in', $uids)->column('team_id') ?: [0];
-            $query->where(function ($query) use ($uids, $tids) {
-                $query->whereOr([
-                    ['user_id', 'in',  $uids],
-                    ['id', 'in', $tids]
-                ]);
-            });
+$plist = \think\facade\Db::view('UserPoint', ['id', 'user_id', 'point_time', 'point'])
+    ->view('TeamPoint', ['user_point_id'], 'UserPoint.id=TeamPoint.user_point_id and TeamPoint.team_id='.$team->id, 'LEFT')
+    ->where('UserPoint.user_id', 'in', $uids)
+    ->where('UserPoint.point_time', '>', $team->getData('start_time'))
+    ->select();
 
-                $plist = \think\facade\Db::view('UserPoint', 'id,user_id,point_time,point')
-                        ->view('TeamPoint', 'user_point_id', 'UserPoint.id=TeamPoint.user_point_id and TeamPoint.team_id='.$team->id, 'LEFT')
-                        ->where('UserPoint.user_id', 'in', $uids)
-                        ->where('UserPoint.point_time',  '>', $team->getData('start_time'))
-                        ->where('user_point_id', 'null')
-                        ->select();
-
-    public function searchConsigneeAttr($query, $value)
-    {
-        if ($value) {
-            $query->where('id', 'in', function ($query) use ($value) {
-                $query->table((new GiftOrder())->getTable())->where('consignee', 'like', "%{$value}%")->field('gift_log_id');
-            });
-        }
-    }
-    public function searchMobileAttr($query, $value)
-    {
-        if ($value) {
-            $query->where('id', 'in', function ($query) use ($value) {
-                $query->table((new GiftOrder())->getTable())->where('mobile', 'like', "%{$value}%")->field('gift_log_id');
-            });
-        }
-    }
 
 ```
 
