@@ -1,13 +1,15 @@
-# 编码规范
+# PHP编程规约
 
-- PSR-12：扩展编码风格
-https://www.php-fig.org/psr/psr-12/
+## 编码规范
 
-# 推荐IDE
+- PSR-12：扩展编码风格 <https://www.php-fig.org/psr/psr-12/>
+
+## 推荐IDE
 
 - Visual Studio Code
 
-# 命名风格
+## 命名风格
+
 1. 【强制】命名中严禁使用拼音或包含拼音，更不允许直接使用中文。
 正例：jd/taobao/aliyun/bilibili/pinyin 国际通用的名称视同英文；array2map 谐音to；map4login 谐音for；
 
@@ -26,9 +28,10 @@ https://www.php-fig.org/psr/psr-12/
 7. 【推荐】在常量与变量的命名时，表示类型的名词放在词尾，以提升辨识度。
 正例：startTime/workQueue/userList/APP_ACCESS_COUNT
 
-# 常量定义
+## 常量定义
 
 1. 【强制】在 方法及函数 中不要使用字面量，应事先定义 常量。
+
 ```php
 // 正例：
 public const STATUS_SUCCESS = 1;
@@ -48,9 +51,10 @@ public function test() {
 
 2. 【推荐】不要使用一个常量类维护所有常量，要按对应功能类进行常量定义，分开维护。
 
-# 控制语句
+## 控制语句
 
 1. 【强制】在 if/else/while/for/foreach 语句中必须使用大括号。
+
 ```php
 // 正例：
 if ($condition) {
@@ -62,6 +66,7 @@ if ($condition) statements;
 ```
 
 2. 【强制】在 switch 块内，每个 case 必须通过 continue/break/return 来终止，或者注释说明将继续执行到哪一个 case 为止。在 switch 块内，必须有 default 语句且放在最后，即使什么代码也没有。
+
 ```php
 // 正例：
 switch ($condition) {
@@ -74,6 +79,7 @@ switch ($condition) {
 ```
 
 3. 【强制】数量限制场景中，避免使用 等于 判断作为中断或退出的条件，应使用大于或小于的区间判断。避免控制没有处理好，产生等值判断被 击穿 的情况。
+
 ```php
 // 正例：数量为小于等于0时，正常返回
 if ($stockQty <= 0) {
@@ -87,6 +93,7 @@ if ($stockQty == 0) {
 ```
 
 4. 【推荐】 if/else/switch 分支语句应只用在 流程跳转及异常抛出 中。判断赋值和处理，应使用短路逻辑运算，或数组映射。
+
 ```php
 // 正例：满足条件，返回
 if ($condition) {
@@ -114,6 +121,7 @@ if ($condition) {
 ```
 
 5. 【推荐】尽可能避免使用 while/for/foreach 循环语句对数组或集合进行操作。使用 箭头/闭包 处理数组和集合。
+
 ```php
 // 正例：遍历数组，返回关联数组
 $datas = array_map(fn($item) => [
